@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Search, FolderOpen, Trash2, Pencil, LogOut, FileText } from 'lucide-react';
+import { Plus, Search, FolderOpen, Trash2, Pencil, LogOut, FileText, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProject } from '../context/ProjectContext';
 import './Home.css';
@@ -22,10 +22,16 @@ export default function Home() {
   const [newRepo, setNewRepo] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [members, setMembers] = useState([]);
+  const [assignTarget, setAssignTarget] = useState(null); // project being assigned
+  const [assignSelection, setAssignSelection] = useState([]);
+  const [savingAssign, setSavingAssign] = useState(false);
 
   useEffect(() => {
     loadProjects();
-
+    if (isSuperAdmin) {
+      api.get('/organizations/members').then(res => setMembers(res.data)).catch(() => {});
+    }
   }, []);
 
   async function loadProjects() {
@@ -87,6 +93,37 @@ export default function Home() {
       toast.success('Project renamed');
     } catch (err) {
       toast.error('Could not rename project.');
+    }
+  }
+
+  function openAssign(p) {
+    setAssignTarget(p);
+    setAssignSelection(p.assigned_user_ids || []);
+  }
+
+  function toggleAssignee(userId) {
+    setAssignSelection((sel) =>
+      sel.includes(userId) ? sel.filter((id) => id !== userId) : [...sel, userId]
+    );
+  }
+
+  async function saveAssign() {
+    setSavingAssign(true);
+    try {
+      await api.post(`/organizations/projects/${assignTarget.id}/assign`, {
+        user_ids: assignSelection,
+      });
+      setProjects((p) =>
+        p.map((proj) =>
+          proj.id === assignTarget.id ? { ...proj, assigned_user_ids: assignSelection } : proj
+        )
+      );
+      toast.success('Project access updated');
+      setAssignTarget(null);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || 'Could not update project access.');
+    } finally {
+      setSavingAssign(false);
     }
   }
 
@@ -158,6 +195,9 @@ export default function Home() {
                     <h3>{p.name}</h3>
                     {isSuperAdmin && (
                       <div className="project-card-actions">
+                        <button title="Assign Team Members" onClick={() => openAssign(p)}>
+                          <Users size={14} />
+                        </button>
                         <button
                           title="Rename"
                           onClick={() => { setEditingId(p.id); setEditName(p.name); }}
@@ -181,6 +221,9 @@ export default function Home() {
                   <div className="project-meta">
                     <span>{p.test_case_counter} test cases</span>
                     <span>Updated {new Date(p.modified_at).toLocaleDateString()}</span>
+                    {isSuperAdmin && (
+                      <span>{(p.assigned_user_ids || []).length} member{(p.assigned_user_ids || []).length === 1 ? '' : 's'} assigned</span>
+                    )}
                   </div>
                   <button className="project-open-btn" onClick={() => openProject(p)}>
                     <FolderOpen size={15} /> Open Project
@@ -253,6 +296,44 @@ export default function Home() {
               <button type="submit" className="primary">Create</button>
             </div>
           </form>
+        </div>
+      )}
+      {assignTarget && (
+        <div className="modal-overlay" onClick={() => setAssignTarget(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Assign Team Members</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              Choose which team members can access <strong>{assignTarget.name}</strong>. As Super Admin, you always have full access regardless of this list.
+            </p>
+            {members.filter(m => m.role !== 'super_admin').length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                You haven't added any team members yet. Add members from the Team & Subscription page first.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto', marginBottom: 4 }}>
+                {members.filter(m => m.role !== 'super_admin').map((m) => (
+                  <label key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', opacity: m.status === 'disabled' ? 0.5 : 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={assignSelection.includes(m.user_id)}
+                      disabled={m.status === 'disabled'}
+                      onChange={() => toggleAssignee(m.user_id)}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{m.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.email}{m.status === 'disabled' ? ' · disabled' : ''}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" onClick={() => setAssignTarget(null)}>Cancel</button>
+              <button type="button" className="primary" onClick={saveAssign} disabled={savingAssign}>
+                {savingAssign ? 'Saving...' : 'Save Access'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
