@@ -1,0 +1,320 @@
+.home-page {
+  min-height: 100vh;
+  background: white;
+  padding: 32px 40px 60px;
+}
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 28px;
+  gap: 14px;
+}
+.home-logo-img {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+
+.home-welcome {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.home-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.home-logout {
+  display: flex;
+  align-items:flex-start;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.home-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.home-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgb(242, 233, 233);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 14px;
+  flex: 1;
+  max-width: 340px;
+  color: var(--text-muted);
+}
+
+.home-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.home-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-mid));
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+  text-align: center;
+  gap: 10px;
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.project-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.project-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.project-card-actions button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.project-card-actions button:hover {
+  background: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.project-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.project-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.project-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  text-transform: capitalize;
+}
+
+.project-badge.tag {
+  background: var(--bg-page);
+  color: var(--text-muted);
+  border-color: var(--border);
+  text-transform: none;
+}
+
+.project-badge.priority-high { background: var(--danger-light); color: #991b1b; border-color: #fecaca; }
+.project-badge.priority-medium { background: var(--warning-light); color: #92400e; border-color: #fde68a; }
+.project-badge.priority-low { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+
+.project-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.project-open-btn {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  padding: 9px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.project-edit-row {
+  display: flex;
+  gap: 6px;
+}
+
+.project-edit-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.project-edit-row button {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-card h2 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.modal-card label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.modal-card input,
+.modal-card textarea,
+.modal-card select {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.modal-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modal-form-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.modal-actions button {
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.modal-actions button.primary {
+  background: linear-gradient(90deg, var(--primary), var(--primary-mid));
+  color: white;
+  border: none;
+}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+  .home-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .home-toolbar { flex-direction: column; align-items: stretch; }
+  .project-grid { grid-template-columns: 1fr !important; }
+  .modal-form-row { grid-template-columns: 1fr; }
+  .modal-card { max-width: 92vw; max-height: 88vh; overflow-y: auto; }
+}
