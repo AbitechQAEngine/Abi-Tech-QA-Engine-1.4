@@ -22,7 +22,7 @@ import models
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "abitechqaengine@gmail.com")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "")
 SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USERNAME)
 
 
@@ -32,6 +32,7 @@ def _deliver(to_email: str, subject: str, body: str) -> None:
 
     if not SMTP_PASSWORD:
         # No app password configured -> skip real SMTP send (dev mode).
+        print("[email_utils] SMTP_PASSWORD not set -- skipping real send (dev mode).")
         return
 
     msg = MIMEText(body)
@@ -39,15 +40,27 @@ def _deliver(to_email: str, subject: str, body: str) -> None:
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
 
+    context = ssl.create_default_context()
     try:
-        context = ssl.create_default_context()
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        # Primary: STARTTLS on 587 (standard Gmail SMTP submission port).
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
             server.starttls(context=context)
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+            print(f"[email_utils] Sent '{subject}' to {to_email} via STARTTLS:{SMTP_PORT}")
+            return
+    except Exception as exc:
+        print(f"[email_utils] STARTTLS:{SMTP_PORT} send failed ({type(exc).__name__}: {exc}) -- retrying via SSL:465")
+
+    try:
+        # Fallback: implicit SSL on 465 (in case the host blocks/mangles STARTTLS on 587).
+        with smtplib.SMTP_SSL(SMTP_HOST, 465, context=context, timeout=15) as server:
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, [to_email], msg.as_string())
+            print(f"[email_utils] Sent '{subject}' to {to_email} via SSL:465")
     except Exception as exc:
         # Never crash the request because of an email failure -- log and move on.
-        print(f"[email_utils] Failed to send email to {to_email}: {exc}")
+        print(f"[email_utils] FAILED to send '{subject}' to {to_email}: {type(exc).__name__}: {exc}")
 
 
 def send_email(
