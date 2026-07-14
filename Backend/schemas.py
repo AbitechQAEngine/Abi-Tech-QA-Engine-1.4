@@ -186,7 +186,7 @@ class OrganizationAdminOut(BaseModel):
     subscription_amount: Optional[float] = None
     payment_status: str
     registration_status: str
-    registration_date: datetime
+    registration_date: Optional[datetime] = None
     subscription_expiry: Optional[datetime] = None
     rejection_reason: Optional[str] = None
 
