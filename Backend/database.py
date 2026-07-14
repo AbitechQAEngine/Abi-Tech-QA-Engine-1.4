@@ -42,6 +42,40 @@ def get_db():
 
 
 def init_db():
-    """Create all tables that don't exist yet. Call once on app startup."""
+    """Create all tables that don't exist yet, then patch any columns that
+    were added to the models later but are missing on an already-existing
+    table (Base.metadata.create_all only creates brand-new tables -- it
+    never ALTERs existing ones). Call once on app startup."""
     import models  # noqa: F401  (ensures models are registered on Base before create_all)
     Base.metadata.create_all(bind=engine)
+    _sync_missing_columns()
+
+
+def _sync_missing_columns():
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue  # brand-new table, create_all already handled it
+        existing_columns = {col["name"] for col in inspector.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in existing_columns:
+                continue
+            col_type = column.type.compile(dialect=engine.dialect)
+            default_clause = ""
+            if column.default is not None and getattr(column.default, "is_scalar", False):
+                default_clause = f" DEFAULT {column.default.arg!r}" if isinstance(column.default.arg, str) else f" DEFAULT {column.default.arg}"
+            elif not column.nullable:
+                # Provide a safe default so the ALTER doesn't fail on existing rows.
+                if str(col_type).upper().startswith("BOOLEAN"):
+                    default_clause = " DEFAULT FALSE"
+                elif str(col_type).upper() in ("INTEGER", "BIGINT", "NUMERIC"):
+                    default_clause = " DEFAULT 0"
+            nullable_clause = "" if column.nullable else " NOT NULL" if default_clause else ""
+            ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {col_type}{default_clause}{nullable_clause}'
+            with engine.begin() as conn:
+                conn.execute(text(ddl))
+            print(f"[init_db] Added missing column {table.name}.{column.name}")
