@@ -20,11 +20,9 @@ SMTP_PASSWORD (Gmail app password) -- works locally, not on Render free tier.
 import os
 import smtplib
 import ssl
-import json
-import urllib.request
-import urllib.error
 from email.mime.text import MIMEText
 
+import httpx
 from sqlalchemy.orm import Session
 import models
 
@@ -39,30 +37,26 @@ SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USERNAME)
 
 
 def _send_via_resend(to_email: str, subject: str, body: str) -> bool:
-    payload = json.dumps({
-        "from": EMAIL_FROM,
-        "to": [to_email],
-        "subject": subject,
-        "text": body,
-    }).encode("utf-8")
-
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=payload,
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json",
-        },
-    )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            resp.read()
+        resp = httpx.post(
+            "https://api.resend.com/emails",
+            json={
+                "from": EMAIL_FROM,
+                "to": [to_email],
+                "subject": subject,
+                "text": body,
+            },
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json",
+                "User-Agent": "ABI-TECH-QA-Engine/1.0",
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201, 202):
             print(f"[email_utils] Sent '{subject}' to {to_email} via Resend API")
             return True
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="ignore")
-        print(f"[email_utils] Resend API FAILED ({exc.code}): {detail}")
+        print(f"[email_utils] Resend API FAILED ({resp.status_code}): {resp.text}")
         return False
     except Exception as exc:
         print(f"[email_utils] Resend API FAILED: {type(exc).__name__}: {exc}")
