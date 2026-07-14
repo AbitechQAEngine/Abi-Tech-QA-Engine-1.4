@@ -25,7 +25,9 @@ const MAX_IMAGE_MB = 10;
 export default function TestCaseGenerator({ project }) {
   const { api } = useAuth();
   const [form, setForm] = useState({ module: '', feature: '', user_story: '' });
-  const [selectedTypes, setSelectedTypes] = useState(['positive', 'negative', 'validation', 'boundary']);
+  const [selectedTypes, setSelectedTypes] = useState(['Functional Testing', 'UI Testing', 'Regression Testing', 'Smoke Testing',
+  'Sanity Testing', 'Integration Testing', 'System Testing', 'API Testing',
+  'Positive Testing', 'Negative Testing', 'Boundary Testing', 'Validation Testing']);
   const [testCases, setTestCases] = useState([]); // persisted rows: { db_id, id, tc_number, title, type, steps, expected, priority, source }
   const [loadingList, setLoadingList] = useState(false);
   const [loading, setLoading] = useState(false);

@@ -12,7 +12,7 @@ for env_file in [os.path.join(BASE_DIR, ".env"), os.path.join(os.getcwd(), ".env
 # GROQ_API_KEY must be set as a real environment variable (Render dashboard,
 # or a local .env file that is NOT committed to git). No hardcoded fallback.
 
-from routers import testcases, automation, bugreports, auth, projects, organizations
+from routers import testcases, automation, bugreports, auth, projects, organizations, registration, platform_admin
 
 app = FastAPI(title="QA Assistant API", version="1.0.0")
 
@@ -35,12 +35,38 @@ app.include_router(testcases.router, prefix="/api/testcases", tags=["Test Cases"
 app.include_router(automation.router, prefix="/api/automation", tags=["Automation"])
 app.include_router(bugreports.router, prefix="/api/bugreports", tags=["Bug Reports"])
 app.include_router(organizations.router, prefix="/api/organizations", tags=["Organizations"])
+app.include_router(registration.router, prefix="/api", tags=["Company Registration"])
+app.include_router(platform_admin.router, prefix="/api/platform-admin", tags=["ABI-TECH Admin Dashboard"])
 
 
 @app.on_event("startup")
 def on_startup():
-    from database import init_db
+    from database import init_db, SessionLocal
     init_db()
+
+    # Auto-provision the ABI-TECH platform Super Admin (BRD Section 1) from
+    # env vars, if configured and not already created.
+    admin_email = os.getenv("PLATFORM_ADMIN_EMAIL")
+    admin_password = os.getenv("PLATFORM_ADMIN_PASSWORD")
+    if admin_email and admin_password:
+        import models
+        from auth_utils import hash_password
+        db = SessionLocal()
+        try:
+            existing = db.query(models.User).filter(models.User.email == admin_email).first()
+            if not existing:
+                db.add(models.User(
+                    name="ABI-TECH Super Admin",
+                    email=admin_email,
+                    password_hash=hash_password(admin_password),
+                    is_platform_admin=True,
+                ))
+                db.commit()
+            elif not existing.is_platform_admin:
+                existing.is_platform_admin = True
+                db.commit()
+        finally:
+            db.close()
 
 @app.get("/")
 def root():

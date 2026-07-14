@@ -46,6 +46,17 @@ def get_current_membership(
     return membership
 
 
+def require_platform_admin(
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+) -> models.User:
+    """Only the ABI-TECH Super Admin may access the QA-Engine Admin
+    Dashboard (BRD Section 1)."""
+    if not user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="ABI-TECH Super Admin access only")
+    return user
+
+
 def require_super_admin(
     db: Session,
     user: models.User,

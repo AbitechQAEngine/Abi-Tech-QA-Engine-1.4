@@ -43,6 +43,8 @@ class UserOut(BaseModel):
     role: Optional[str] = None            # super_admin | team_member
     organization_id: Optional[int] = None
     organization_name: Optional[str] = None
+    is_platform_admin: bool = False
+    must_reset_password: bool = False
 
     class Config:
         from_attributes = True
@@ -115,6 +117,103 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
+    new_password: str
+    confirm_password: str
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v, info):
+        if "new_password" in info.data and v != info.data["new_password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
+
+# ---------- Company Registration & Subscription (BRD v2.0) ----------
+
+class CompanyRegister(BaseModel):
+    # Company Information
+    company_name: str
+    country: str
+    state: str
+    city: str
+    registration_number: str
+    # Administrator Information
+    administrator_name: str
+    email: EmailStr
+    confirm_email: EmailStr
+    # Subscription
+    subscription_plan: str  # "1_year" | "2_years"
+    # Contact Details
+    mobile_number: str
+    landline_number: Optional[str] = None
+    address_line1: str
+    address_line2: Optional[str] = None
+    postal_code: str
+
+    @field_validator("confirm_email")
+    @classmethod
+    def emails_match(cls, v, info):
+        if "email" in info.data and v.lower() != info.data["email"].lower():
+            raise ValueError("Email and Confirm Email do not match")
+        return v
+
+    @field_validator("subscription_plan")
+    @classmethod
+    def valid_plan(cls, v):
+        if v not in ("1_year", "2_years"):
+            raise ValueError("subscription_plan must be '1_year' or '2_years'")
+        return v
+
+
+class CompanyRegisterOut(BaseModel):
+    organization_id: int
+    registration_id: int
+    company_name: str
+    subscription_plan: str
+    amount: float
+    payment_status: str
+    registration_status: str
+    payment_link: str
+
+
+class OrganizationAdminOut(BaseModel):
+    id: int
+    name: str
+    admin_name: Optional[str] = None
+    admin_email: Optional[str] = None
+    country: Optional[str] = None
+    subscription_plan_code: Optional[str] = None
+    subscription_amount: Optional[float] = None
+    payment_status: str
+    registration_status: str
+    registration_date: datetime
+    subscription_expiry: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PlatformStats(BaseModel):
+    total_registered: int
+    pending_approvals: int
+    active_companies: int
+    expired_companies: int
+    revenue_generated: float
+    monthly_registrations: int
+    active_users: int
+    total_projects: int
+
+
+class RejectRequest(BaseModel):
+    reason: str
+
+
+class PayRequest(BaseModel):
+    gateway: str = "test_gateway"  # Stripe Test | Razorpay Test | PayPal Sandbox
+
+
+class FirstLoginResetRequest(BaseModel):
     new_password: str
     confirm_password: str
 

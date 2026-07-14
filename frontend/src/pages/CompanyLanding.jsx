@@ -44,7 +44,7 @@ export default function CompanyLanding({ onNavigate }) {
           </div>
           <div className="landing-nav-actions">
             <button className="landing-btn landing-btn-ghost" onClick={() => onNavigate('login')}>Login</button>
-            <button className="landing-btn landing-btn-primary" onClick={() => onNavigate('signup')}>Sign Up</button>
+            <button className="landing-btn landing-btn-primary" onClick={() => onNavigate('addcompany')}>Add Company</button>
           </div>
         </div>
       </header>
@@ -61,7 +61,7 @@ export default function CompanyLanding({ onNavigate }) {
               repetitive documentation and more time on real testing.
             </p>
             <div className="landing-hero-actions">
-              <button className="landing-btn landing-btn-primary landing-btn-lg" onClick={() => onNavigate('signup')}>
+              <button className="landing-btn landing-btn-primary landing-btn-lg" onClick={() => onNavigate('addcompany')}>
                 Get Started Free <ArrowRight size={16} />
               </button>
               <button className="landing-btn landing-btn-ghost landing-btn-lg" onClick={() => onNavigate('login')}>
@@ -163,7 +163,7 @@ export default function CompanyLanding({ onNavigate }) {
           <h2>Ready to speed up your QA process?</h2>
           <p>Create a free account and generate your first batch of test cases in minutes.</p>
           <div className="landing-hero-actions" style={{ justifyContent: 'center' }}>
-            <button className="landing-btn landing-btn-white landing-btn-lg" onClick={() => onNavigate('signup')}>
+            <button className="landing-btn landing-btn-white landing-btn-lg" onClick={() => onNavigate('addcompany')}>
               Sign Up <ArrowRight size={16} />
             </button>
             <button className="landing-btn landing-btn-outline landing-btn-lg" onClick={() => onNavigate('login')}>

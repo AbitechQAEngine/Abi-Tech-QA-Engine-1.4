@@ -29,6 +29,26 @@ def _user_out_with_org(user: models.User, db: Session) -> schemas.UserOut:
     return schemas.UserOut(**data)
 
 
+def _check_org_access(membership: models.OrganizationMembership | None):
+    """BRD Section 10: Company Login is disabled while the org's
+    subscription isn't active (pending payment, awaiting approval,
+    rejected, suspended, or expired)."""
+    if not membership:
+        return
+    org = membership.organization
+    status_ = org.registration_status
+    if status_ == "pending_payment":
+        raise HTTPException(status_code=403, detail="Registration payment is not complete yet.")
+    if status_ == "waiting_approval":
+        raise HTTPException(status_code=403, detail="Your registration is awaiting ABI-TECH admin approval.")
+    if status_ == "rejected":
+        raise HTTPException(status_code=403, detail=f"Registration was rejected. Reason: {org.rejection_reason or 'N/A'}")
+    if status_ == "suspended":
+        raise HTTPException(status_code=403, detail="Your organization's subscription has been suspended.")
+    if status_ == "expired":
+        raise HTTPException(status_code=403, detail="Your subscription has expired. Please renew to continue.")
+
+
 @router.post("/register", response_model=schemas.TokenOut, status_code=201)
 def register(payload: schemas.UserRegister, db: Session = Depends(get_db)):
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
@@ -50,6 +70,10 @@ def register(payload: schemas.UserRegister, db: Session = Depends(get_db)):
         name=f"{user.name}'s Organization",
         plan="professional",
         max_team_members=10,
+        registration_status="active",
+        payment_status="paid",
+        admin_name=user.name,
+        admin_email=user.email,
     )
     db.add(org)
     db.commit()
@@ -82,8 +106,34 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
     if membership and membership.status == "disabled":
         raise HTTPException(status_code=403, detail="Your account has been disabled by your organization admin")
 
+    if not user.is_platform_admin:
+        _check_org_access(membership)
+
     token = create_access_token({"user_id": user.id})
     return schemas.TokenOut(access_token=token, user=_user_out_with_org(user, db))
+
+
+@router.post("/reset-temp-password")
+def reset_temp_password(
+    payload: schemas.FirstLoginResetRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.password_hash = hash_password(payload.new_password)
+    current_user.must_reset_password = False
+    current_user.is_temp_password = False
+    db.commit()
+    return {"message": "Password reset successfully."}
+
+
+@router.post("/skip-temp-password-reset")
+def skip_temp_password_reset(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.must_reset_password = False
+    db.commit()
+    return {"message": "Skipped for now."}
 
 
 @router.get("/me", response_model=schemas.UserOut)

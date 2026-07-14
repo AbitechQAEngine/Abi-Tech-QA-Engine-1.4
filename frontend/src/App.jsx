@@ -4,11 +4,14 @@ import { useAuth } from './context/AuthContext';
 import { ProjectProvider, useProject } from './context/ProjectContext';
 
 import Login from './pages/Login';
-import Signup from './pages/Signup';
+import AddCompany from './pages/AddCompany';
+import Payment from './pages/Payment';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import CompanyLanding from './pages/CompanyLanding';
 import Home from './pages/Home';
+import PlatformAdminDashboard from './pages/PlatformAdminDashboard';
+import FirstLoginPasswordModal from './components/FirstLoginPasswordModal';
 
 import Sidebar from './components/Sidebar';
 import TestCaseGenerator from './pages/TestCaseGenerator';
@@ -30,20 +33,28 @@ const DEV_MODE_FAKE_USER = { id: 0, name: 'Dev User', email: 'dev@example.com' }
 function AuthGate() {
   // If the URL already has a reset token, jump straight to the reset screen.
   // Otherwise, unauthenticated visitors land on the company / about page,
-  // which itself offers Login and Sign Up buttons.
+  // which itself offers Login and Add Company buttons.
   const initialView = new URLSearchParams(window.location.search).get('token')
     ? 'reset'
     : 'about';
   const [view, setView] = useState(initialView);
+  const [organizationId, setOrganizationId] = useState(null);
 
-  if (view === 'login') return <Login onNavigate={setView} />;
-  if (view === 'signup') return <Signup onNavigate={setView} />;
-  if (view === 'forgot') return <ForgotPassword onNavigate={setView} />;
-  if (view === 'reset') return <ResetPassword onNavigate={setView} />;
-  return <CompanyLanding onNavigate={setView} />;
+  function navigate(nextView, params) {
+    if (params?.organizationId) setOrganizationId(params.organizationId);
+    setView(nextView);
+  }
+
+  if (view === 'login') return <Login onNavigate={navigate} />;
+  if (view === 'addcompany' || view === 'signup') return <AddCompany onNavigate={navigate} />;
+  if (view === 'payment') return <Payment organizationId={organizationId} onNavigate={navigate} />;
+  if (view === 'forgot') return <ForgotPassword onNavigate={navigate} />;
+  if (view === 'reset') return <ResetPassword onNavigate={navigate} />;
+  return <CompanyLanding onNavigate={navigate} />;
 }
 
 function Workspace() {
+  const { user } = useAuth();
   const { activeProject, closeProject } = useProject();
   const [activePage, setActivePage] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -117,12 +128,14 @@ function Workspace() {
           border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
         }
       }} />
+
+      {user?.must_reset_password && <FirstLoginPasswordModal />}
     </div>
   );
 }
 
 function AppInner() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { activeProject } = useProject();
 
   if (DEV_MODE_SKIP_LOGIN) {
@@ -135,6 +148,13 @@ function AppInner() {
   }
 
   if (!user) return <AuthGate />;
+
+  // ABI-TECH Super Admin (platform-level) lands on the QA-Engine Admin
+  // Dashboard instead of the company workspace (BRD Section 1).
+  if (user.is_platform_admin) {
+    return <PlatformAdminDashboard onLogout={logout} />;
+  }
+
   if (!activeProject) return <Home />;
   return <Workspace />;
 }
