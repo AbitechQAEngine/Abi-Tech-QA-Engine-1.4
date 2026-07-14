@@ -49,6 +49,7 @@ def init_db():
     import models  # noqa: F401  (ensures models are registered on Base before create_all)
     Base.metadata.create_all(bind=engine)
     _sync_missing_columns()
+    _backfill_null_defaults()
 
 
 def _sync_missing_columns():
@@ -66,7 +67,10 @@ def _sync_missing_columns():
                 continue
             col_type = column.type.compile(dialect=engine.dialect)
             default_clause = ""
-            if column.default is not None and getattr(column.default, "is_scalar", False):
+            if column.server_default is not None:
+                # e.g. DateTime(server_default=func.now()) -> DEFAULT now()
+                default_clause = f" DEFAULT {column.server_default.arg.text}"
+            elif column.default is not None and getattr(column.default, "is_scalar", False):
                 default_clause = f" DEFAULT {column.default.arg!r}" if isinstance(column.default.arg, str) else f" DEFAULT {column.default.arg}"
             elif not column.nullable:
                 # Provide a safe default so the ALTER doesn't fail on existing rows.
@@ -79,3 +83,29 @@ def _sync_missing_columns():
             with engine.begin() as conn:
                 conn.execute(text(ddl))
             print(f"[init_db] Added missing column {table.name}.{column.name}")
+
+
+def _backfill_null_defaults():
+    """For columns that have a server_default (e.g. registration_date =
+    func.now()), fill in any existing NULL rows -- this covers rows that
+    were inserted before the column existed, or before it had a default,
+    since Postgres doesn't retroactively apply a new DEFAULT to old rows."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue
+        for column in table.columns:
+            if column.server_default is None:
+                continue
+            ddl = (
+                f'UPDATE "{table.name}" SET "{column.name}" = {column.server_default.arg.text} '
+                f'WHERE "{column.name}" IS NULL'
+            )
+            with engine.begin() as conn:
+                result = conn.execute(text(ddl))
+                if result.rowcount:
+                    print(f"[init_db] Backfilled {result.rowcount} NULL value(s) in {table.name}.{column.name}")
