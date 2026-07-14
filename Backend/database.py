@@ -52,6 +52,16 @@ def init_db():
     _backfill_null_defaults()
 
 
+def _compile_server_default(column):
+    """Return SQL text for a column's server_default, handling both text()
+    clauses (has .text) and function expressions like func.now() (needs
+    compiling)."""
+    arg = column.server_default.arg
+    if hasattr(arg, "text"):
+        return arg.text
+    return str(arg.compile(dialect=engine.dialect, compile_kwargs={"literal_binds": True}))
+
+
 def _sync_missing_columns():
     from sqlalchemy import inspect, text
 
@@ -69,7 +79,7 @@ def _sync_missing_columns():
             default_clause = ""
             if column.server_default is not None:
                 # e.g. DateTime(server_default=func.now()) -> DEFAULT now()
-                default_clause = f" DEFAULT {column.server_default.arg.text}"
+                default_clause = f" DEFAULT {_compile_server_default(column)}"
             elif column.default is not None and getattr(column.default, "is_scalar", False):
                 default_clause = f" DEFAULT {column.default.arg!r}" if isinstance(column.default.arg, str) else f" DEFAULT {column.default.arg}"
             elif not column.nullable:
@@ -102,7 +112,7 @@ def _backfill_null_defaults():
             if column.server_default is None:
                 continue
             ddl = (
-                f'UPDATE "{table.name}" SET "{column.name}" = {column.server_default.arg.text} '
+                f'UPDATE "{table.name}" SET "{column.name}" = {_compile_server_default(column)} '
                 f'WHERE "{column.name}" IS NULL'
             )
             with engine.begin() as conn:
