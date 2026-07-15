@@ -47,12 +47,20 @@ def _org_to_admin_out(org: models.Organization) -> schemas.OrganizationAdminOut:
     )
 
 
+def _platform_admin_emails(db: Session):
+    """Emails of all platform-admin users -- their orgs (if any, e.g. from
+    testing) should never appear in the customer-facing dashboard."""
+    rows = db.query(models.User.email).filter(models.User.is_platform_admin == True).all()  # noqa: E712
+    return {r[0] for r in rows}
+
+
 @router.get("/stats", response_model=schemas.PlatformStats)
 def dashboard_stats(
     db: Session = Depends(get_db),
     admin: models.User = Depends(require_platform_admin),
 ):
-    q = db.query(models.Organization)
+    admin_emails = _platform_admin_emails(db)
+    q = db.query(models.Organization).filter(models.Organization.admin_email.notin_(admin_emails))
     total = q.count()
     pending = q.filter(models.Organization.registration_status == ORG_STATUS_WAITING_APPROVAL).count()
     active = q.filter(models.Organization.registration_status == ORG_STATUS_ACTIVE).count()
@@ -90,7 +98,8 @@ def list_organizations(
     db: Session = Depends(get_db),
     admin: models.User = Depends(require_platform_admin),
 ):
-    q = db.query(models.Organization)
+    admin_emails = _platform_admin_emails(db)
+    q = db.query(models.Organization).filter(models.Organization.admin_email.notin_(admin_emails))
     if status_filter:
         q = q.filter(models.Organization.registration_status == status_filter)
     orgs = q.order_by(models.Organization.registration_date.desc()).all()

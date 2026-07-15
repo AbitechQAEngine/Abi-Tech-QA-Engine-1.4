@@ -189,7 +189,11 @@ class TestCaseRequest(BaseModel):
     # If provided, generation starts from this number instead (BRD Module 7, "No" path).
     custom_start_id: Optional[int] = None
 
-SYSTEM_PROMPT = """You are an expert QA engineer. Generate test cases based on the provided information.
+SYSTEM_PROMPT = """You are an expert QA engineer. Generate ALL POSSIBLE test cases based on the
+provided information — do not limit the count or hold back coverage. Be exhaustive: cover every
+positive, negative, validation, boundary, edge-case, and error-handling scenario you can identify
+for the given module/feature, including uncommon and edge conditions a thorough QA engineer would
+think of. Do not skip a scenario just to keep the list short.
 Return ONLY a valid JSON array with no markdown formatting, no code blocks, just raw JSON.
 Each object must have: id, title, type, steps, expected, priority.
 - id: sequential like TC_001, TC_002
@@ -223,12 +227,15 @@ async def generate_test_cases(
     project = get_owned_project(request.project_id, db, current_user)
 
     types_str = ", ".join(request.test_types)
-    prompt = f"""Generate test cases for:
+    prompt = f"""Generate ALL POSSIBLE test cases for:
 Module: {request.module}
 Feature: {request.feature}
 User Story: {request.user_story}
 Test Types needed: {types_str}
-Generate 3-5 test cases per type requested. Return as a JSON array only."""
+Do not limit yourself to a fixed number per type -- generate every relevant positive, negative,
+validation, and boundary test case you can think of for this feature, covering all realistic
+scenarios, edge cases, and error conditions. Be exhaustive rather than brief.
+Return as a JSON array only."""
     try:
         client = get_client()
         response = client.chat.completions.create(
@@ -238,7 +245,7 @@ Generate 3-5 test cases per type requested. Return as a JSON array only."""
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=3500
+            max_tokens=8000
         )
         content = response.choices[0].message.content.strip()
         test_cases = parse_test_cases_json(content)
@@ -557,16 +564,17 @@ async def generate_from_screenshot(
         context_lines.append(f"Focus Test Type: {test_type}")
     context_block = "\n\n".join(context_lines)
 
-    prompt = f"""You are an expert QA engineer. Analyze the {len(image_blocks)} attached UI screenshot(s) together as one connected user flow and generate comprehensive, consolidated test cases.
+    prompt = f"""You are an expert QA engineer. Analyze the {len(image_blocks)} attached UI screenshot(s) together as one connected user flow and generate ALL POSSIBLE, comprehensive, consolidated test cases -- do not limit the count or hold back coverage.
 
 {context_block if context_block else "No additional context was provided beyond the screenshots."}
 
-Look at the UI elements visible across all screenshots (buttons, forms, inputs, dropdowns, links, etc.)
-and generate test cases covering:
+Look at every UI element visible across all screenshots (buttons, forms, inputs, dropdowns, links, labels, error states, etc.)
+and generate test cases covering, exhaustively:
 - Positive test cases (happy path)
 - Negative test cases (invalid inputs, errors)
 - Validation test cases (field validations)
 - Boundary test cases (edge cases)
+- Any other realistic scenario, error condition, or edge case a thorough QA engineer would test
 {f"- Prioritize {test_type} style test cases where relevant" if test_type else ""}
 
 Return ONLY a valid JSON array with no markdown, no code blocks.
@@ -578,7 +586,7 @@ Each object must have: id, title, type, steps, expected, priority.
 - expected: expected result
 - priority: High/Medium/Low
 
-Generate 8-15 test cases that consolidate everything you see across all screenshots and the provided context."""
+Do not cap the number of test cases -- generate every relevant test case you can identify across all screenshots and the provided context, however many that is."""
 
     try:
         client = get_client()
@@ -593,7 +601,7 @@ Generate 8-15 test cases that consolidate everything you see across all screensh
                 }
             ],
             temperature=0.3,
-            max_tokens=4000
+            max_tokens=8000
         )
 
         content = response.choices[0].message.content.strip()
