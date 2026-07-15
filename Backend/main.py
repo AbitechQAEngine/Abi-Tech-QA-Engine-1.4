@@ -62,7 +62,11 @@ def on_startup():
                     is_platform_admin=True,
                 ))
                 db.commit()
-            elif not existing.is_platform_admin:
+            else:
+                # Always keep the platform admin's password and flag in sync
+                # with the env vars, even if this email was previously used
+                # for something else (e.g. a company registration).
+                existing.password_hash = hash_password(admin_password)
                 existing.is_platform_admin = True
                 db.commit()
         finally:
