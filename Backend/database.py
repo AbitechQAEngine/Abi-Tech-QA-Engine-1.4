@@ -118,8 +118,4 @@ def _backfill_null_defaults():
             with engine.begin() as conn:
                 result = conn.execute(text(ddl))
                 if result.rowcount:
-<<<<<<< HEAD
                     print(f"[init_db] Backfilled {result.rowcount} NULL value(s) in {table.name}.{column.name}")
-=======
-                    print(f"[init_db] Backfilled {result.rowcount} NULL value(s) in {table.name}.{column.name}")
->>>>>>> 001fad58346e9bc4d98d6b6ffbe1a60df3b69356
