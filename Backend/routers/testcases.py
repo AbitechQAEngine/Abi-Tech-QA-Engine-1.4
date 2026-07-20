@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from groq import Groq
+from openai import OpenAI
 import os, io, json
 import pandas as pd
 from openpyxl import Workbook
@@ -19,6 +20,18 @@ def get_client():
     if not api_key:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
     return Groq(api_key=api_key)
+
+
+def get_openrouter_client():
+    """Client for Llama 4 Scout via OpenRouter (replaces Groq for this model,
+    since Groq stopped reliably serving llama-4-scout)."""
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not set")
+    return OpenAI(
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1",
+    )
 
 
 def _escape_raw_control_chars_in_strings(text: str) -> str:
@@ -589,11 +602,11 @@ Each object must have: id, title, type, steps, expected, priority.
 Do not cap the number of test cases -- generate every relevant test case you can identify across all screenshots and the provided context, however many that is."""
 
     try:
-        client = get_client()
+        client = get_openrouter_client()
 
-        # Use Groq vision model
+        # Use Llama 4 Scout via OpenRouter (vision-capable)
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="meta-llama/llama-4-scout",
             messages=[
                 {
                     "role": "user",
@@ -601,7 +614,12 @@ Do not cap the number of test cases -- generate every relevant test case you can
                 }
             ],
             temperature=0.3,
-            max_tokens=8000
+            max_tokens=8000,
+            extra_headers={
+                # Optional but recommended by OpenRouter for attribution/rankings
+                "HTTP-Referer": os.getenv("APP_URL", "http://localhost"),
+                "X-Title": "Abitech QA Engine",
+            },
         )
 
         content = response.choices[0].message.content.strip()
