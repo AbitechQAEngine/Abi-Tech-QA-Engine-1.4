@@ -49,8 +49,6 @@ def init_db():
     import models  # noqa: F401  (ensures models are registered on Base before create_all)
     Base.metadata.create_all(bind=engine)
     _sync_missing_columns()
-<<<<<<< HEAD
-=======
     _backfill_null_defaults()
 
 
@@ -62,7 +60,6 @@ def _compile_server_default(column):
     if hasattr(arg, "text"):
         return arg.text
     return str(arg.compile(dialect=engine.dialect, compile_kwargs={"literal_binds": True}))
->>>>>>> fca6f112781b511c3d592746483095cb29ff0e6e
 
 
 def _sync_missing_columns():
@@ -80,14 +77,10 @@ def _sync_missing_columns():
                 continue
             col_type = column.type.compile(dialect=engine.dialect)
             default_clause = ""
-<<<<<<< HEAD
-            if column.default is not None and getattr(column.default, "is_scalar", False):
-=======
             if column.server_default is not None:
                 # e.g. DateTime(server_default=func.now()) -> DEFAULT now()
                 default_clause = f" DEFAULT {_compile_server_default(column)}"
             elif column.default is not None and getattr(column.default, "is_scalar", False):
->>>>>>> fca6f112781b511c3d592746483095cb29ff0e6e
                 default_clause = f" DEFAULT {column.default.arg!r}" if isinstance(column.default.arg, str) else f" DEFAULT {column.default.arg}"
             elif not column.nullable:
                 # Provide a safe default so the ALTER doesn't fail on existing rows.
@@ -99,9 +92,6 @@ def _sync_missing_columns():
             ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {col_type}{default_clause}{nullable_clause}'
             with engine.begin() as conn:
                 conn.execute(text(ddl))
-<<<<<<< HEAD
-            print(f"[init_db] Added missing column {table.name}.{column.name}")
-=======
             print(f"[init_db] Added missing column {table.name}.{column.name}")
 
 
@@ -129,4 +119,3 @@ def _backfill_null_defaults():
                 result = conn.execute(text(ddl))
                 if result.rowcount:
                     print(f"[init_db] Backfilled {result.rowcount} NULL value(s) in {table.name}.{column.name}")
->>>>>>> fca6f112781b511c3d592746483095cb29ff0e6e
