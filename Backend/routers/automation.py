@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
 from groq import Groq
+import asyncio
 import os, io, zipfile
 from sqlalchemy.orm import Session
 
@@ -89,8 +90,12 @@ async def generate_automation(
     project = get_owned_project(request.project_id, db, current_user)
     try:
         if request.framework == "both":
-            pw = generate_script(request.test_cases, "playwright")
-            sel = generate_script(request.test_cases, "selenium")
+            # Run both generations concurrently in worker threads instead of
+            # blocking the event loop twice, back to back.
+            pw, sel = await asyncio.gather(
+                asyncio.to_thread(generate_script, request.test_cases, "playwright"),
+                asyncio.to_thread(generate_script, request.test_cases, "selenium"),
+            )
 
             db.add(models.AutomationHistory(project_id=project.id, prompt="playwright (both)", generated_script=pw))
             db.add(models.AutomationHistory(project_id=project.id, prompt="selenium (both)", generated_script=sel))
@@ -106,7 +111,7 @@ async def generate_automation(
             return StreamingResponse(buf, media_type="application/zip",
                 headers={"Content-Disposition": "attachment; filename=automation_scripts.zip"})
         else:
-            script = generate_script(request.test_cases, request.framework)
+            script = await asyncio.to_thread(generate_script, request.test_cases, request.framework)
             ext = "spec.js" if request.framework == "playwright" else "test.js"
 
             db.add(models.AutomationHistory(project_id=project.id, prompt=request.framework, generated_script=script))
