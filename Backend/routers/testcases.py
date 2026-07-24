@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from groq import Groq
 from openai import OpenAI
+import asyncio
 import os, io, json
 import pandas as pd
 from openpyxl import Workbook
@@ -604,8 +605,13 @@ Do not cap the number of test cases -- generate every relevant test case you can
     try:
         client = get_openrouter_client()
 
-        # Use Llama 4 Scout via OpenRouter (vision-capable)
-        response = client.chat.completions.create(
+        # Use Llama 4 Scout via OpenRouter (vision-capable).
+        # Run the blocking SDK call in a worker thread so it doesn't freeze
+        # the event loop for the duration of the request (important with
+        # WEB_CONCURRENCY=1 -- otherwise every other request, including
+        # Render's health check, stalls until this one finishes).
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model="meta-llama/llama-4-scout",
             messages=[
                 {
