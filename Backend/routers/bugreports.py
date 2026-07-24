@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from groq import Groq
+import asyncio
 import os, json
 from sqlalchemy.orm import Session
 
@@ -47,7 +48,8 @@ Browser: {request.browser}
 Actual Behavior: {request.actual_behavior}"""
     try:
         client = get_client()
-        response = client.chat.completions.create(
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
