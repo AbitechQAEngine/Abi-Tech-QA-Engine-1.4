@@ -251,15 +251,20 @@ validation, and boundary test case you can think of for this feature, covering a
 scenarios, edge cases, and error conditions. Be exhaustive rather than brief.
 Return as a JSON array only."""
     try:
-        client = get_client()
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        client = get_openrouter_client()
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
+            model="meta-llama/llama-3.3-70b-instruct",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=8000
+            max_tokens=8000,
+            extra_headers={
+                "HTTP-Referer": os.getenv("APP_URL", "http://localhost"),
+                "X-Title": "Abitech QA Engine",
+            },
         )
         content = response.choices[0].message.content.strip()
         test_cases = parse_test_cases_json(content)
